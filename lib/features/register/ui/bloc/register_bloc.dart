@@ -1,5 +1,6 @@
 // Eventos que recibo
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:moviles_auth/features/register/domain/signup_usecase.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract class RegisterEvent {}
@@ -35,6 +36,9 @@ class RegisterSuccessState extends RegisterState {}
 // La clase Bloc
 
 class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
+  //Dependencia
+  SignupUsecase usecase = SignupUsecase();
+
   RegisterBloc() : super(RegisterIdleState()) {
     on<OnRegisterSubmittedEvent>(register);
   }
@@ -43,21 +47,14 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
     OnRegisterSubmittedEvent event,
     Emitter<RegisterState> emit,
   ) async {
-    emit(RegisterLoadingState());
-    //Registro, tengo que llamarlo desde un caso de uso
     try {
-      //1. Auth
-      AuthResponse response = await Supabase.instance.client.auth.signUp(
-        email: event.email,
-        password: event.password,
+      emit(RegisterLoadingState());
+      await usecase.call(
+        event.email,
+        event.password,
+        event.username,
+        event.fullName,
       );
-      //2. DB
-      await Supabase.instance.client.from('profiles').insert({
-        'id': response.user?.id,
-        'username': event.username,
-        'full_name': event.fullName,
-        'email': event.email,
-      });
       emit(RegisterSuccessState());
     } on Exception catch (e) {
       emit(RegisterErrorState(errorMessage: e.toString()));
